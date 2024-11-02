@@ -1,0 +1,18 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "This is the backend for the InciSafe-Manager project. It is a Node.js application that uses the Express framework to serve a REST API. The API is used to manage the data for the InciSafe-Manager project.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "firebase-admin": "^12.7.0"
+  }
+}
