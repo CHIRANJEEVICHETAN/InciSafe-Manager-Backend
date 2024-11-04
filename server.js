@@ -11,12 +11,18 @@ const db = admin.firestore();
 const app = express();
 app.use(express.json());
 
-const departments = ["HR", "Engineering", "Sales", "Marketing"];
+const departments = ["HR", "Engineering", "Sales", "Marketing", "IT", "Finance", "Legal", "Operations", "Customer Service", "Research and Development"];
 const employees = [
   "John Doe - 1001",
   "Jane Smith - 1002",
   "Alice Johnson - 1003",
   "Bob Brown - 1004",
+  "Charlie Davis - 1005",
+  "David Lee - 1006",
+  "Eve White - 1007",
+  "Frank Green - 1008",
+  "Grace Black - 1009",
+  "Henry Gray - 1010",
 ];
 const severity = ["minor", "moderate", "severe"];
 const incidentCategories = ["BehaviourIncident", "ChemicalIncident", "EnvironmentalHazard", "EquipmentIssues", "FireIncident", "HealthSafety",
@@ -56,16 +62,23 @@ app.post("/deleteUser", async (req, res) => {
 
 app.post('/sendNotification', async (req, res) => {
   const { title, body, date, username, userId } = req.body;
-  const message = {
-    notification: { title, body },
-    topic: "all_users",
-  };
 
   try {
-    // Send the notification
-    const response = await admin.messaging().send(message);
+    // Fetch all FCM tokens from Firestore
+    const tokensSnapshot = await db.collection("FCMTokens").get();
+    const tokens = tokensSnapshot.docs.map(doc => doc.data()["FCM Token"]);
 
-    console.log("Notification sent successfully:", response);
+    if (tokens.length === 0) {
+      return res.status(404).send({ error: 'No FCM tokens found' });
+    }
+
+    // Send notifications to all tokens
+    const response = await admin.messaging().sendEachForMulticast({
+      tokens: tokens,
+      notification: { title, body },
+    });
+
+    console.log("Notifications sent successfully:", response.successCount);
 
     // Reference to the user’s notifications subcollection
     const userNotificationsRef = db.collection("notifications").doc(userId).collection("userNotifications");
@@ -82,14 +95,47 @@ app.post('/sendNotification', async (req, res) => {
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    await userNotificationsRef.add(notificationData);
-    await adminNotificationsRef.add(notificationData);
+    await userNotificationsRef.add(notificationData); // Save to user-specific notifications
+    await adminNotificationsRef.add(notificationData); // Save to adminNotifications
 
-    console.log("Notification data saved to Firestore successfully.");
-    res.status(200).send("Notification sent and saved to Firestore successfully.");
+    console.log("Notification document created in Firestore for user:", userId, notificationData);
+    res.status(200).send({ message: 'Notifications sent successfully', response });
   } catch (error) {
-    console.error("Error sending notification:", error);
-    res.status(500).send("Error sending notification");
+    console.error('Error sending notifications:', error);
+    res.status(500).send({ error: 'Failed to send notifications', message: error });
+  }
+});
+
+// Endpoint to receive and store FCM tokens
+app.post('/storeFCMToken', async (req, res) => {
+  const { token } = req.body;
+  try {
+    // Check if the token already exists
+    const tokensSnapshot = await db.collection("FCMTokens").get();
+    let existingDocId = null;
+
+    tokensSnapshot.forEach(doc => {
+      if (doc.data()["FCM Token"] === token) {
+        existingDocId = doc.id;
+      }
+    });
+
+    if (existingDocId) {
+      // Update the existing token
+      await db.collection("FCMTokens").doc(existingDocId).set({ "FCM Token": token });
+      console.log(`Updated FCM Token for document ID: ${existingDocId}`);
+    } else {
+      // Create a new document for the new token
+      const newDocId = `DeviceID${String(deviceCounter).padStart(4, '0')}`;
+      await db.collection("FCMTokens").doc(newDocId).set({ "FCM Token": token });
+      console.log(`Stored new FCM Token with document ID: ${newDocId}`);
+      deviceCounter++;
+    }
+
+    res.status(200).send({ message: 'FCM Token processed successfully' });
+  } catch (error) {
+    console.error('Error processing FCM Token:', error);
+    res.status(500).send({ error: 'Failed to process FCM Token' });
   }
 });
 
