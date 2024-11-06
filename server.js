@@ -28,116 +28,125 @@ const severity = ["minor", "moderate", "severe"];
 const incidentCategories = ["BehaviourIncident", "ChemicalIncident", "EnvironmentalHazard", "EquipmentIssues", "FireIncident", "HealthSafety",
   "PolicyViolation", "WeatherHazards", "uniformSafety"];
 
-// Endpoint to get departments
-app.get("/departments", (req, res) => {
-  res.json(departments);
-});
+  let deviceCounter = 1; // Initialize a counter for device IDs
 
-app.get("/incidentCategories", (req, res) => {
-  res.json(incidentCategories);
-});
+  // Endpoint to get departments
+  app.get("/departments", (req, res) => {
+    res.json(departments);
+  });
 
-// Endpoint to get employees
-app.get("/employees", (req, res) => {
-  res.json(employees);
-});
+  app.get("/incidentCategories", (req, res) => {
+    res.json(incidentCategories);
+  });
 
-// Endpoint to get severity levels
-app.get("/severity", (req, res) => {
-  res.json(severity);
-});
+  // Endpoint to get employees
+  app.get("/employees", (req, res) => {
+    res.json(employees);
+  });
 
-// Endpoint to delete a user
-app.post("/deleteUser", async (req, res) => {
-  const { uid } = req.body;
-  try {
-    await admin.auth().deleteUser(uid);
-    console.log(`Successfully deleted user with UID: ${uid}`);
-    res.status(200).send({ message: `User ${uid} deleted successfully` });
-  } catch (error) {
-    console.error("Error deleting user:", error);
-    res.status(500).send({ error: "Failed to delete user" });
-  }
-});
+  // Endpoint to get severity levels
+  app.get("/severity", (req, res) => {
+    res.json(severity);
+  });
 
-app.post('/sendNotification', async (req, res) => {
-  const { title, body, date, username, userId } = req.body;
-
-  try {
-    // Fetch all FCM tokens from Firestore
-    const tokensSnapshot = await db.collection("FCMTokens").get();
-    const tokens = tokensSnapshot.docs.map(doc => doc.data()["FCM Token"]);
-
-    if (tokens.length === 0) {
-      return res.status(404).send({ error: 'No FCM tokens found' });
+  // Endpoint to delete a user
+  app.post("/deleteUser", async (req, res) => {
+    const { uid } = req.body;
+    try {
+      await admin.auth().deleteUser(uid);
+      console.log(`Successfully deleted user with UID: ${uid}`);
+      res.status(200).send({ message: `User ${uid} deleted successfully` });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).send({ error: "Failed to delete user" });
     }
+  });
 
-    // Send notifications to all tokens
-    const response = await admin.messaging().sendEachForMulticast({
-      tokens: tokens,
-      notification: { title, body },
-    });
+  app.post("/sendNotification", async (req, res) => {
+    const { title, body, date, username, userId } = req.body;
 
-    console.log("Notifications sent successfully:", response.successCount);
+    try {
+      // Fetch all FCM tokens from Firestore
+      const tokensSnapshot = await db.collection("FCMTokens").get();
+      const tokens = tokensSnapshot.docs.map((doc) => doc.data()["FCM Token"]);
 
-    // Reference to the user’s notifications subcollection
-    const userNotificationsRef = db.collection("notifications").doc(userId).collection("userNotifications");
-
-    // Reference to the adminNotifications collection
-    const adminNotificationsRef = db.collection("adminNotifications");
-
-    // Create a new document for each notification in both collections
-    const notificationData = {
-      title,
-      body,
-      date,
-      username,
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-    };
-
-    await userNotificationsRef.add(notificationData); // Save to user-specific notifications
-    await adminNotificationsRef.add(notificationData); // Save to adminNotifications
-
-    console.log("Notification document created in Firestore for user:", userId, notificationData);
-    res.status(200).send({ message: 'Notifications sent successfully', response });
-  } catch (error) {
-    console.error('Error sending notifications:', error);
-    res.status(500).send({ error: 'Failed to send notifications', message: error });
-  }
-});
-
-// Endpoint to receive and store FCM tokens
-app.post('/storeFCMToken', async (req, res) => {
-  const { token } = req.body;
-  try {
-    // Check if the token already exists
-    const tokensSnapshot = await db.collection("FCMTokens").get();
-    let existingDocId = null;
-
-    tokensSnapshot.forEach(doc => {
-      if (doc.data()["FCM Token"] === token) {
-        existingDocId = doc.id;
+      if (tokens.length === 0) {
+        return res.status(404).send({ error: "No FCM tokens found" });
       }
-    });
 
-    if (existingDocId) {
-      // Update the existing token
-      await db.collection("FCMTokens").doc(existingDocId).set({ "FCM Token": token });
-      console.log(`Updated FCM Token for document ID: ${existingDocId}`);
-    } else {
-      // Create a new document for the new token
-      const newDocId = `DeviceID${String(deviceCounter).padStart(4, '0')}`;
-      await db.collection("FCMTokens").doc(newDocId).set({ "FCM Token": token });
-      console.log(`Stored new FCM Token with document ID: ${newDocId}`);
-      deviceCounter++;
+      // Send notifications to all tokens
+      const response = await admin.messaging().sendEachForMulticast({
+        tokens: tokens,
+        notification: { title, body },
+      });
+
+      console.log("Notifications sent successfully:", response.successCount);
+
+      // Reference to the user’s notifications subcollection
+      const userNotificationsRef = db
+        .collection("notifications")
+        .doc(userId)
+        .collection("userNotifications");
+
+      // Reference to the adminNotifications collection
+      const adminNotificationsRef = db.collection("adminNotifications");
+
+      // Create a new document for each notification in both collections
+      const notificationData = {
+        title,
+        body,
+        date,
+        username,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      await userNotificationsRef.add(notificationData); // Save to user-specific notifications
+      await adminNotificationsRef.add(notificationData); // Save to adminNotifications
+
+      console.log(
+        "Notification document created in Firestore for user:",
+        userId,
+        notificationData
+      );
+      res
+        .status(200)
+        .send({ message: "Notifications sent successfully", response });
+    } catch (error) {
+      console.error("Error sending notifications:", error);
+      res
+        .status(500)
+        .send({ error: "Failed to send notifications", message: error });
     }
+  });
 
-    res.status(200).send({ message: 'FCM Token processed successfully' });
-  } catch (error) {
-    console.error('Error processing FCM Token:', error);
-    res.status(500).send({ error: 'Failed to process FCM Token' });
-  }
-});
+  // Endpoint to receive and store FCM tokens
+  app.post("/storeFCMToken", async (req, res) => {
+    const { token } = req.body;
+    try {
+      // Check if the token already exists
+      const tokensSnapshot = await db.collection("FCMTokens").get();
+      let tokenExists = false;
+
+      tokensSnapshot.forEach((doc) => {
+        if (doc.data()["FCM Token"] === token) {
+          tokenExists = true;
+        }
+      });
+
+      if (tokenExists) {
+        console.log(`FCM Token already exists: ${token}`);
+      } else {
+        // Use Firestore's auto-generated ID for new tokens
+        await db.collection("FCMTokens").add({ "FCM Token": token });
+        console.log(`Stored new FCM Token with auto-generated document ID`);
+      }
+
+      res.status(200).send({ message: "FCM Token processed successfully" });
+    } catch (error) {
+      console.error("Error processing FCM Token:", error);
+      res.status(500).send({ error: "Failed to process FCM Token" });
+    }
+  });
 
 // Start the server
 const port = process.env.PORT || 3000;
