@@ -11,7 +11,7 @@ const db = admin.firestore();
 const app = express();
 app.use(express.json());
 
-const departments = ["HR", "Engineering", "Sales", "Marketing", "IT", "Finance", "Legal", "Operations", "Customer Service", "Research and Development"];
+const departments = ["HR", "Engineering", "Sales", "Marketing", "IT", "Finance", "Legal", "Operations", "Customer Service", "Research and Development", "Product Management"];
 const employees = [
   "John Doe - 1001",
   "Jane Smith - 1002",
@@ -23,6 +23,18 @@ const employees = [
   "Frank Green - 1008",
   "Grace Black - 1009",
   "Henry Gray - 1010",
+  "Isabella Red - 1011",
+  "Jack Yellow - 1012",
+  "Kate Blue - 1013",
+  "Liam Green - 1014",
+  "Mia White - 1015",
+  "Nathan Black - 1016",
+  "Olivia Red - 1017",
+  "Peter Gray - 1018",
+  "Quinn Blue - 1019",
+  "Riley Green - 1020",
+  "Sophia White - 1021",
+  "Thomas Black - 1022",
 ];
 const severity = ["minor", "moderate", "severe"];
 const incidentCategories = ["BehaviourIncident", "ChemicalIncident", "EnvironmentalHazard", "EquipmentIssues", "FireIncident", "HealthSafety",
