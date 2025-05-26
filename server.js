@@ -3,8 +3,12 @@ const admin = require("firebase-admin");
 require('dotenv').config(); // Load environment variables
 
 // Initialize Firebase Admin SDK using environment variable
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+// Fix the private key by replacing escaped newlines with actual newlines
+serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
+
 admin.initializeApp({
-  credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
+  credential: admin.credential.cert(serviceAccount),
 });
 
 const db = admin.firestore();
